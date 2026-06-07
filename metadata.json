@@ -1,0 +1,6 @@
+{
+  "name": "MyFamily",
+  "description": "A beautiful, highly interactive family space for sharing tasks, moods, real-time AI summaries, and unified chat.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

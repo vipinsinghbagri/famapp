@@ -1,0 +1,22 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Centered 66dp area is from x=21 to x=87, y=21 to y=87 -->
+    <!-- Draw a modern house frame -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#1E293B"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 54,26 L 28,48 L 34,48 L 34,82 L 74,82 L 74,48 L 80,48 Z" />
+    <!-- Draw a warm heart inside the house in soft lavender or peach -->
+    <path
+        android:fillColor="#BC84EE"
+        android:strokeColor="#1E293B"
+        android:strokeWidth="2"
+        android:strokeLineJoin="round"
+        android:pathData="M 54,65 C 54,65 44,57 44,50 C 44,45.5 48,42 51.5,42 C 54,42 54,46 54,46 C 54,46 54,42 56.5,42 C 60,42 64,45.5 64,50 C 64,57 54,65 54,65 Z" />
+</vector>
