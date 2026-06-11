@@ -141,8 +141,9 @@ fun OnboardingScreen(onJoinSpace: (String, String, Int) -> Unit) {
     var selectedAvatarIndex by remember { mutableIntStateOf(0) }
     
     val context = LocalContext.current
-    
-    // Animate onboarding screen entrance
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    // Entrance Animation State
     var isVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { isVisible = true }
     
@@ -152,242 +153,183 @@ fun OnboardingScreen(onJoinSpace: (String, String, Int) -> Unit) {
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        WarmCream,
-                        Color(0xFFFFF2D8),
-                        Color(0xFFF3E8FF)
+                        DarkCanvas,
+                        DeepSpace,
+                        ElectricIndigo.copy(alpha = 0.3f)
                     )
                 )
-            )
-            .statusBarsPadding()
-            .navigationBarsPadding(),
+            ),
         contentAlignment = Alignment.Center
     ) {
+        // Soft glowing background light
+        Box(
+            modifier = Modifier
+                .size(400.dp)
+                .offset(y = (-200).dp)
+                .background(RoyalPurple.copy(alpha = 0.15f), CircleShape)
+                .drawBehind { drawCircle(RoyalPurple.copy(alpha = 0.1f), radius = size.minDimension) }
+        )
+
         AnimatedVisibility(
             visible = isVisible,
-            enter = fadeIn(animationSpec = spring()) + slideInVertically(
-                initialOffsetY = { 200 },
-                animationSpec = spring()
+            enter = fadeIn(animationSpec = tween(1000)) + slideInVertically(
+                initialOffsetY = { 100 },
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
             )
         ) {
-            Card(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(24.dp)
-                    .padding(bottom = 6.dp, end = 6.dp)
-                    .neobrutalistShadow(
-                        color = CharcoalDark,
-                        cornerRadius = 28.dp,
-                        offset = 6.dp
-                    )
-                    .border(3.dp, CharcoalDark, RoundedCornerShape(28.dp)),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                shape = RoundedCornerShape(28.dp)
+                    .clip(RoundedCornerShape(32.dp))
+                    .background(GlassBackground)
+                    .border(1.5.dp, GlassBorder, RoundedCornerShape(32.dp))
+                    .padding(28.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
+                // Branding
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(SoftCyan, RoyalPurple)
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Home,
+                        contentDescription = "Logo",
+                        tint = Color.White,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                Text(
+                    text = "MyFamily Room",
+                    style = MaterialTheme.typography.displayMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.ExtraBold,
+                    textAlign = TextAlign.Center
+                )
+                
+                Text(
+                    text = "Enter your private family portal",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.White.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(32.dp))
+                
+                // Input Fields
+                GlassInputField(
+                    label = "Family ID",
+                    value = familyId,
+                    onValueChange = { familyId = it.uppercase() },
+                    placeholder = "e.g. KHAN-2024",
+                    icon = Icons.Default.VpnKey,
+                    trailingAction = {
+                        TextButton(
+                            onClick = {
+                                familyId = "FAM-" + (100..999).random().toString()
+                            }
+                        ) {
+                            Text("Generate", color = SoftCyan, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                GlassInputField(
+                    label = "Your Nickname",
+                    value = nickname,
+                    onValueChange = { nickname = it },
+                    placeholder = "How should we call you?",
+                    icon = Icons.Default.Person
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Avatar Selection
+                Text(
+                    text = "Pick an Identity",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    itemsIndexed(avatarPresets) { idx, item ->
+                        val isSelected = idx == selectedAvatarIndex
+                        Box(
+                            modifier = Modifier
+                                .size(70.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(if (isSelected) RoyalPurple else GlassBackground)
+                                .border(
+                                    2.dp,
+                                    if (isSelected) SoftCyan else GlassBorder,
+                                    RoundedCornerShape(20.dp)
+                                )
+                                .clickable { selectedAvatarIndex = idx },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(item.emoji, fontSize = 28.sp)
+                                Text(
+                                    item.label,
+                                    fontSize = 10.sp,
+                                    color = if (isSelected) Color.White else Color.White.copy(alpha = 0.6f),
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(40.dp))
+                
+                // Submit Button
+                Button(
+                    onClick = {
+                        if (familyId.length < 3 || nickname.isEmpty()) {
+                            Toast.makeText(context, "Complete all fields first!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            keyboardController?.hide()
+                            onJoinSpace(familyId, nickname, selectedAvatarIndex)
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp)
-                        .verticalScroll(rememberScrollState()),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .height(64.dp)
+                        .clip(RoundedCornerShape(20.dp)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = RoyalPurple
+                    ),
+                    shape = RoundedCornerShape(20.dp)
                 ) {
-                    // Header logo / title
-                    Box(
-                        modifier = Modifier
-                            .size(72.dp)
-                            .background(PastelLime, CircleShape)
-                            .border(3.dp, CharcoalDark, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Home,
-                            contentDescription = "Family logo",
-                            tint = CharcoalDark,
-                            modifier = Modifier.size(36.dp)
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Text(
-                        text = "MyFamily Space 🏡",
-                        style = MaterialTheme.typography.displayMedium,
-                        color = CharcoalDark,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
-                    
-                    Text(
-                        text = "Your private, beautiful digital living room",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = CharcoalMedium,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    // Family ID Block
-                    Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "Family Space ID (6 Characters)",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = CharcoalDark
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            OutlinedTextField(
-                                value = familyId,
-                                onValueChange = { if (it.length <= 15) familyId = it.uppercase() },
-                                placeholder = { Text("E.g. FAM-77") },
-                                singleLine = true,
-                                shape = RoundedCornerShape(16.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = SoftLavender,
-                                    unfocusedBorderColor = CharcoalDark.copy(alpha = 0.5f),
-                                    focusedContainerColor = Color(0xFFF8FAFC),
-                                    unfocusedContainerColor = Color(0xFFF8FAFC)
-                                ),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .testTag("onboarding_family_id_input")
-                            )
-                            
-                            Spacer(modifier = Modifier.width(8.dp))
-                            
-                            Button(
-                                onClick = {
-                                    val randomCode = ('A'..'Z').shuffled().take(3).joinToString("") +
-                                            "-" + (100..999).random().toString()
-                                    familyId = randomCode
-                                },
-                                shape = RoundedCornerShape(16.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = PastelLime,
-                                    contentColor = CharcoalDark
-                                ),
-                                border = BorderStroke(2.dp, CharcoalDark),
-                                modifier = Modifier.height(56.dp)
-                            ) {
-                                Text("Auto", fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // User Nickname Block
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "Your Nickname",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = CharcoalDark
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = nickname,
-                            onValueChange = { nickname = it },
-                            placeholder = { Text("Mummy, Papa, Chintu...") },
-                            singleLine = true,
-                            shape = RoundedCornerShape(16.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = SoftLavender,
-                                unfocusedBorderColor = CharcoalDark.copy(alpha = 0.5f),
-                                focusedContainerColor = Color(0xFFF8FAFC),
-                                unfocusedContainerColor = Color(0xFFF8FAFC)
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("onboarding_nickname_input")
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(20.dp))
-                    
-                    // Avatar Picker Block
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "Choose Your Avatar",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = CharcoalDark
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(3),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(130.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            itemsIndexed(avatarPresets) { idx, item ->
-                                val isSelected = idx == selectedAvatarIndex
-                                Box(
-                                    modifier = Modifier
-                                        .aspectRatio(1.3f)
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(item.color)
-                                        .border(
-                                            width = if (isSelected) 3.dp else 1.dp,
-                                            color = if (isSelected) CharcoalDark else CharcoalDark.copy(
-                                                alpha = 0.2f
-                                            ),
-                                            shape = RoundedCornerShape(16.dp)
-                                        )
-                                        .clickable { selectedAvatarIndex = idx }
-                                        .padding(4.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(item.emoji, fontSize = 28.sp)
-                                        Text(
-                                            item.label,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = CharcoalDark
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(30.dp))
-                    
-                    // Start Button
-                    Button(
-                        onClick = {
-                            if (familyId.trim().length < 3) {
-                                Toast.makeText(context, "Please enter or generate a Family ID!", Toast.LENGTH_SHORT).show()
-                            } else if (nickname.trim().isEmpty()) {
-                                Toast.makeText(context, "Please enter your Nickname!", Toast.LENGTH_SHORT).show()
-                            } else {
-                                onJoinSpace(familyId.trim(), nickname.trim(), selectedAvatarIndex)
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = SoftLavender,
-                            contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(20.dp),
-                        border = BorderStroke(3.dp, CharcoalDark),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(60.dp)
-                            .testTag("lock_and_enter_button")
-                    ) {
-                        Text(
-                            text = "Lock & Enter Space 🔑",
+                            "Secure Login",
                             fontSize = 18.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = CharcoalDark
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(Icons.Default.ArrowForward, contentDescription = null, tint = Color.White)
                     }
                 }
             }
@@ -395,357 +337,415 @@ fun OnboardingScreen(onJoinSpace: (String, String, Int) -> Unit) {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun GlassInputField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    trailingAction: @Composable (() -> Unit)? = null
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = Color.White.copy(alpha = 0.6f),
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            placeholder = { Text(placeholder, color = Color.White.copy(alpha = 0.3f)) },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            leadingIcon = { Icon(icon, contentDescription = null, tint = SoftCyan) },
+            trailingIcon = trailingAction,
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                focusedContainerColor = GlassBackground,
+                unfocusedContainerColor = GlassBackground,
+                focusedBorderColor = SoftCyan,
+                unfocusedBorderColor = GlassBorder,
+                cursorColor = SoftCyan
+            )
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(viewModel: MyFamilyViewModel) {
     val familyId by viewModel.familyId.collectAsState()
     val nickname by viewModel.nickname.collectAsState()
     val avatarIndex by viewModel.avatarIndex.collectAsState()
-    val tasks by viewModel.tasks.collectAsState()
-    val chatFeed by viewModel.chatFeed.collectAsState()
-    val familyMembers by viewModel.familyMembers.collectAsState()
-    val userMood by viewModel.userMood.collectAsState()
-    val aiDigest by viewModel.aiDigest.collectAsState()
-    val aiFeedbackMessage by viewModel.aiFeedbackMessage.collectAsState()
-    val isDarkMode by viewModel.isDarkMode.collectAsState()
+    val posts by viewModel.posts.collectAsState()
+    val chatMessages by viewModel.chatMessages.collectAsState()
+    
+    var currentTab by remember { mutableIntStateOf(0) } // 0: Feed, 1: Chat, 2: Family
     
     val myAvatar = avatarPresets[avatarIndex.coerceIn(0, avatarPresets.size - 1)]
-    val context = LocalContext.current
-    val clipboardManager = LocalClipboardManager.current
-    
-    // Dialog control states
-    var showMoodDialog by remember { mutableStateOf(false) }
-    var selectedMemberForMoodChange by remember { mutableStateOf<FamilyMember?>(null) }
-    var showSimulatedPhotoDialog by remember { mutableStateOf(false) }
-    
+
     Scaffold(
+        containerColor = DarkCanvas,
         topBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(if (isDarkMode) DarkBg else WarmCream)
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // Profile Info
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable { showMoodDialog = true }
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(46.dp)
-                                .background(myAvatar.color, RoundedCornerShape(14.dp))
-                                .border(2.dp, if (isDarkMode) Color.White else CharcoalDark, RoundedCornerShape(14.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(myAvatar.emoji, fontSize = 24.sp)
-                        }
-                        
-                        Spacer(modifier = Modifier.width(10.dp))
-                        
-                        Column {
-                            Text(
-                                text = nickname,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isDarkMode) Color.White else CharcoalDark
-                            )
-                            Text(
-                                text = userMood,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = if (isDarkMode) SoftLavender else CharcoalMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                    
-                    // Logo and Toggles
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // Dark mode toggle
-                        IconButton(
-                            onClick = { viewModel.toggleDarkMode() },
-                            modifier = Modifier
-                                .size(44.dp)
-                                .background(
-                                    if (isDarkMode) CharcoalDark else Color.White,
-                                    RoundedCornerShape(12.dp)
-                                )
-                                .border(
-                                    2.dp,
-                                    if (isDarkMode) Color.White.copy(0.4f) else CharcoalDark,
-                                    RoundedCornerShape(12.dp)
-                                )
-                        ) {
-                            Icon(
-                                imageVector = if (isDarkMode) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
-                                contentDescription = "Toggle Dark Mode",
-                                tint = if (isDarkMode) Color.Yellow else CharcoalDark,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        
-                        // Log out/reset
-                        IconButton(
-                            onClick = {
-                                viewModel.logOutAndReset()
-                                Toast.makeText(context, "Space Reset Successful!", Toast.LENGTH_SHORT).show()
-                            },
-                            modifier = Modifier
-                                .size(44.dp)
-                                .background(
-                                    if (isDarkMode) CharcoalDark else Color.White,
-                                    RoundedCornerShape(12.dp)
-                                )
-                                .border(
-                                    2.dp,
-                                    if (isDarkMode) Color.White.copy(0.4f) else CharcoalDark,
-                                    RoundedCornerShape(12.dp)
-                                )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Logout,
-                                contentDescription = "Log Out",
-                                tint = if (isDarkMode) Color.White else CharcoalDark,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                // MyFamily Hub Title & Space Badge
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "MyFamily Hub 🏡",
-                        style = MaterialTheme.typography.displayMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 26.sp,
-                        color = if (isDarkMode) Color.White else CharcoalDark
-                    )
-                    
-                    // Space Copyable Badge
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(PastelLime)
-                            .border(2.dp, CharcoalDark, RoundedCornerShape(12.dp))
-                            .clickable {
-                                clipboardManager.setText(AnnotatedString(familyId))
-                                Toast.makeText(context, "ID copied to Clipboard: $familyId", Toast.LENGTH_SHORT).show()
-                            }
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = "Share code",
-                                tint = CharcoalDark,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "ID: $familyId",
-                                fontWeight = FontWeight.ExtraBold,
-                                color = CharcoalDark,
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-                }
-            }
+            GlassTopBar(nickname, myAvatar, familyId, onLogout = { viewModel.logOutAndReset() })
         },
         bottomBar = {
-            // Speech Task parsing AI assistant floating box
-            VoiceTaskOverlaySimulated(
-                viewModel = viewModel,
-                isDarkMode = isDarkMode
-            )
+            GlassBottomNav(currentTab, onTabSelected = { currentTab = it })
         }
     ) { innerPadding ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(if (isDarkMode) DarkBg else WarmCream)
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            
-            // Item 1: AI Generated Daily Brief Summary Box
-            item {
-                Spacer(modifier = Modifier.height(4.dp))
-                AIDigestCardSection(aiDigest = aiDigest, isDarkMode = isDarkMode)
-            }
-            
-            // Item 2: Live Family Cards Grid Header
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Realtime Family Core ✨",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = if (isDarkMode) Color.White else CharcoalDark
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(DeepSpace, DarkCanvas)
                     )
-                    Text(
-                        text = "(Tap cards to toggle status)",
-                        fontSize = 11.sp,
-                        color = if (isDarkMode) Color.White.copy(0.6f) else CharcoalMedium
-                    )
-                }
-            }
-            
-            // Item 3: Live Family Cards Grid (Brutalist style cards)
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    val chunked = familyMembers.chunked(2)
-                    chunked.forEach { rowMembers ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            rowMembers.forEach { member ->
-                                FamilyCard(
-                                    member = member,
-                                    isDarkMode = isDarkMode,
-                                    onClick = {
-                                        selectedMemberForMoodChange = member
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                            if (rowMembers.size < 2) {
-                                Spacer(modifier = Modifier.weight(1f))
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // Item 4: Tasks Section Header
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Immediate Handouts & Tasks ⚡",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = if (isDarkMode) Color.White else CharcoalDark
-                    )
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                if (isDarkMode) SoftLavender.copy(0.2f) else SoftLavender,
-                                RoundedCornerShape(10.dp)
-                            )
-                            .border(1.5.dp, CharcoalDark, RoundedCornerShape(10.dp))
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = "${tasks.count { !it.isCompleted }} pending",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isDarkMode) Color.White else CharcoalDark
-                        )
-                    }
-                }
-            }
-            
-            // Item 5: Tasks Checklist List
-            if (tasks.isEmpty()) {
-                item {
-                    CardEmptyState(
-                        text = "All clean! No tasks assigned. Try adding one with the voice simulator below!",
-                        imageVector = Icons.Default.AddTask,
-                        isDarkMode = isDarkMode
-                    )
-                }
-            } else {
-                items(tasks, key = { it.id }) { task ->
-                    TaskRowItem(
-                        task = task,
-                        isDarkMode = isDarkMode,
-                        onCheckedChange = { viewModel.toggleTaskCompletion(task.id) },
-                        onDelete = { viewModel.deleteTask(task.id) }
-                    )
-                }
-            }
-            
-            // Item 6: Family Chat & Photo Wall Header
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Unified Chat & Food Wall 🥘",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = if (isDarkMode) Color.White else CharcoalDark
-                    )
-                    
-                    Button(
-                        onClick = { showSimulatedPhotoDialog = true },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = WarmPeach,
-                            contentColor = CharcoalDark
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                        border = BorderStroke(1.5.dp, CharcoalDark),
-                        modifier = Modifier.height(34.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CameraAlt,
-                            contentDescription = "Post photo",
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Polaroid", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-            
-            // Item 7: Chat Creator Quick text
-            item {
-                ChatInputBar(
-                    isDarkMode = isDarkMode,
-                    onMessageSend = { viewModel.addChatMessage(it) }
                 )
+        ) {
+            when (currentTab) {
+                0 -> SocialFeedTab(posts, viewModel)
+                1 -> GroupChatTab(chatMessages, viewModel)
+                2 -> FamilyMembersTab(viewModel)
             }
-            
-            // Item 8: Chat stream including dynamic layouts for photos
-            items(chatFeed, key = { it.id }) { message ->
-                ChatBubbleOrPolaroid(message = message, isDarkMode = isDarkMode)
-            }
-            
-            // Bottom space buffer
-            item { Spacer(modifier = Modifier.height(130.dp)) }
         }
     }
+}
+
+@Composable
+fun GlassTopBar(nickname: String, avatar: AvatarPreset, familyId: String, onLogout: () -> Unit) {
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
+    
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(16.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(GlassBackground)
+            .border(1.dp, GlassBorder, RoundedCornerShape(24.dp))
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(avatar.color),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(avatar.emoji, fontSize = 20.sp)
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(nickname, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(
+                    "ID: $familyId",
+                    color = SoftCyan,
+                    fontSize = 11.sp,
+                    modifier = Modifier.clickable {
+                        clipboardManager.setText(AnnotatedString(familyId))
+                        Toast.makeText(context, "ID Copied!", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+        }
+        
+        IconButton(onClick = onLogout) {
+            Icon(Icons.Default.Logout, contentDescription = "Logout", tint = RoseModern)
+        }
+    }
+}
+
+@Composable
+fun GlassBottomNav(selectedTab: Int, onTabSelected: (Int) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(16.dp)
+            .height(70.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(GlassBackground)
+            .border(1.dp, GlassBorder, RoundedCornerShape(24.dp)),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val items = listOf(
+            Icons.Default.Dashboard to "Feed",
+            Icons.Default.ChatBubble to "Chat",
+            Icons.Default.People to "Family"
+        )
+        
+        items.forEachIndexed { index, item ->
+            val isSelected = selectedTab == index
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { onTabSelected(index) }
+                    .padding(8.dp)
+            ) {
+                Icon(
+                    imageVector = item.first,
+                    contentDescription = item.second,
+                    tint = if (isSelected) SoftCyan else Color.White.copy(alpha = 0.5f),
+                    modifier = Modifier.size(24.dp)
+                )
+                Text(
+                    item.second,
+                    color = if (isSelected) SoftCyan else Color.White.copy(alpha = 0.5f),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SocialFeedTab(posts: List<FamilyPost>, viewModel: MyFamilyViewModel) {
+    var postText by remember { mutableStateOf("") }
+    
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Create Post Box
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = GlassBackground),
+            border = BorderStroke(1.dp, GlassBorder)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                OutlinedTextField(
+                    value = postText,
+                    onValueChange = { postText = it },
+                    placeholder = { Text("What's happening in the family?", color = Color.White.copy(alpha = 0.3f)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent
+                    )
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Button(
+                        onClick = {
+                            if (postText.isNotBlank()) {
+                                viewModel.createPost(postText)
+                                postText = ""
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = ElectricIndigo),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Post", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(posts) { post ->
+                PostCard(post, viewModel)
+            }
+        }
+    }
+}
+
+@Composable
+fun PostCard(post: FamilyPost, viewModel: MyFamilyViewModel) {
+    val avatar = avatarPresets[post.avatarIndex.coerceIn(0, avatarPresets.size - 1)]
+    var showComments by remember { mutableStateOf(false) }
+    var commentText by remember { mutableStateOf("") }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = GlassBackground),
+        border = BorderStroke(1.dp, GlassBorder)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(avatar.color), contentAlignment = Alignment.Center) {
+                    Text(avatar.emoji, fontSize = 16.sp)
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(post.sender, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(post.timestamp, color = Color.White.copy(alpha = 0.5f), fontSize = 10.sp)
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(post.content, color = Color.White, fontSize = 15.sp)
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { viewModel.likePost(post.id) }) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Favorite, contentDescription = null, tint = RoseModern, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("${post.likes}", color = Color.White, fontSize = 12.sp)
+                    }
+                }
+                IconButton(onClick = { showComments = !showComments }) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Comment, contentDescription = null, tint = SoftCyan, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("${post.comments.size}", color = Color.White, fontSize = 12.sp)
+                    }
+                }
+            }
+
+            if (showComments) {
+                Divider(color = GlassBorder, modifier = Modifier.padding(vertical = 8.dp))
+                post.comments.forEach { comment ->
+                    val cAvatar = avatarPresets[comment.avatarIndex.coerceIn(0, avatarPresets.size - 1)]
+                    Row(modifier = Modifier.padding(vertical = 4.dp)) {
+                        Text("${cAvatar.emoji} ", fontSize = 12.sp)
+                        Text("${comment.sender}: ", color = SoftCyan, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text(comment.text, color = Color.White, fontSize = 12.sp)
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextField(
+                        value = commentText,
+                        onValueChange = { commentText = it },
+                        placeholder = { Text("Add a comment...", fontSize = 12.sp, color = Color.White.copy(alpha = 0.3f)) },
+                        modifier = Modifier.weight(1f),
+                        colors = TextFieldDefaults.colors(containerColor = Color.Transparent)
+                    )
+                    IconButton(onClick = {
+                        if (commentText.isNotBlank()) {
+                            viewModel.addComment(post.id, commentText)
+                            commentText = ""
+                        }
+                    }) {
+                        Icon(Icons.Default.Send, contentDescription = null, tint = SoftCyan)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GroupChatTab(messages: List<ChatMessage>, viewModel: MyFamilyViewModel) {
+    var messageText by remember { mutableStateOf("") }
+    val scrollState = rememberLazyListState()
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            state = scrollState,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(messages) { msg ->
+                ChatBubble(msg)
+            }
+        }
+        
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(GlassBackground)
+                .border(1.dp, GlassBorder, RoundedCornerShape(24.dp))
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextField(
+                value = messageText,
+                onValueChange = { messageText = it },
+                placeholder = { Text("Message family...", color = Color.White.copy(alpha = 0.3f)) },
+                modifier = Modifier.weight(1f),
+                colors = TextFieldDefaults.colors(
+                    containerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent
+                )
+            )
+            IconButton(onClick = {
+                if (messageText.isNotBlank()) {
+                    viewModel.sendChatMessage(messageText)
+                    messageText = ""
+                }
+            }) {
+                Icon(Icons.Default.Send, contentDescription = null, tint = SoftCyan)
+            }
+        }
+    }
+}
+
+@Composable
+fun ChatBubble(msg: ChatMessage) {
+    val avatar = avatarPresets[msg.avatarIndex.coerceIn(0, avatarPresets.size - 1)]
+    Row(verticalAlignment = Alignment.Top, modifier = Modifier.padding(vertical = 4.dp)) {
+        Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(avatar.color), contentAlignment = Alignment.Center) {
+            Text(avatar.emoji, fontSize = 16.sp)
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 16.dp))
+                .background(GlassBackground)
+                .padding(12.dp)
+        ) {
+            Text(msg.sender, color = SoftCyan, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+            Text(msg.text, color = Color.White, fontSize = 14.sp)
+        }
+    }
+}
+
+@Composable
+fun FamilyMembersTab(viewModel: MyFamilyViewModel) {
+    val members by viewModel.familyMembers.collectAsState()
+    
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(members) { member ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = GlassBackground),
+                border = BorderStroke(1.dp, GlassBorder)
+            ) {
+                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(Color(android.graphics.Color.parseColor(member.colorHex))), contentAlignment = Alignment.Center) {
+                        Text(avatarPresets[member.avatarIndex].emoji, fontSize = 28.sp)
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(member.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text(member.mood, color = SoftCyan, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+    }
+}
     
     // Dialog: Active User Mood dialog
     if (showMoodDialog) {
