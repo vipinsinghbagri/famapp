@@ -22,6 +22,16 @@ data class Family(
     val createdAt: String
 )
 
+@Entity(tableName = "family_members")
+data class FamilyMember(
+    @PrimaryKey val id: String,
+    val name: String,
+    val role: String,
+    val avatarIndex: Int,
+    val mood: String,
+    val colorHex: String
+)
+
 @Entity(tableName = "posts")
 data class FamilyPost(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
